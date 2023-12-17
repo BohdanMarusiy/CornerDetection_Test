@@ -111,8 +111,8 @@ void OpenCV_KLT(string path) {
 
     // Define the codec and create VideoWriter object
     VideoWriter outputVideo;
-    string outputFilename = "/results/KLT.mp4"; // Change this filename as needed
-    int codec = VideoWriter::fourcc('M', 'P', '4', 'V');
+    string outputFilename = "C:/work/results/KLT.mp4"; // Change this filename as needed
+    int codec = VideoWriter::fourcc('x', 'P', '4', 'V');
     outputVideo.open(outputFilename, codec, fps, Size(frameWidth, frameHeight));
 
     if (!outputVideo.isOpened()) {
@@ -190,6 +190,118 @@ void OpenCV_KLT(string path) {
     destroyAllWindows();
 }
 
+struct FeatureTrack {
+    Point2f point;
+    vector<Point2f> track;
+};
+
+
+void PyramidKLT(string path) {
+    VideoCapture video(path);
+
+    // Check if the video is opened successfully
+    if (!video.isOpened()) {
+        cerr << "Could not open the video." << endl;
+        return;
+    }
+
+    // Video properties
+    int frameWidth = static_cast<int>(video.get(CAP_PROP_FRAME_WIDTH));
+    int frameHeight = static_cast<int>(video.get(CAP_PROP_FRAME_HEIGHT));
+    double fps = video.get(CAP_PROP_FPS);
+
+    // Define the codec and create VideoWriter object
+    VideoWriter outputVideo;
+    string outputFilename = "/results/PyramidKLT.mp4"; // Change this filename as needed
+    int codec = VideoWriter::fourcc('x', 'P', '4', 'V');
+    outputVideo.open(outputFilename, codec, fps, Size(frameWidth, frameHeight));
+
+    if (!outputVideo.isOpened()) {
+        cerr << "Could not create the output video file." << endl;
+        return;
+    }
+
+    // Read the first frame
+    Mat prevFrame, prevGray;
+    video >> prevFrame;
+
+    // Convert the first frame to grayscale
+    cvtColor(prevFrame, prevGray, COLOR_BGR2GRAY);
+
+    // Feature detection using goodFeaturesToTrack
+    vector<Point2f> keypoints;
+    int maxCorners = 1000;
+    double qualityLevel = 0.01;
+    double minDistance = 10.0;
+    int blockSize = 3;
+    bool useHarrisDetector = false;
+    double k = 0.04;
+    goodFeaturesToTrack(prevGray, keypoints, maxCorners, qualityLevel, minDistance,
+                        Mat(), blockSize, useHarrisDetector, k);
+
+    // Initialize FeatureTrack objects for detected keypoints
+    vector<FeatureTrack> featureTracks;
+    for (const auto& keypoint : keypoints) {
+        FeatureTrack track;
+        track.point = keypoint;
+        track.track.push_back(keypoint);
+        featureTracks.push_back(track);
+    }
+
+    Mat frame, gray;
+    vector<Point2f> nextPoints;
+
+    while (true) {
+    // Read the next frame
+    video >> frame;
+
+    // Check if the video ends
+    if (frame.empty()) {
+        break;
+    }
+
+    cvtColor(frame, gray, COLOR_BGR2GRAY);
+
+    // Pyramidal Lucas-Kanade optical flow for feature tracking
+    vector<Point2f> prevKeypoints = keypoints;
+    vector<uchar> status;
+    vector<float> err;
+    TermCriteria criteria = TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 30, 0.01);
+
+    calcOpticalFlowPyrLK(prevGray, gray, prevKeypoints, nextPoints, status, err,
+                         Size(21, 21), 3, criteria);
+
+    // Display the frame with tracked features
+    for (size_t i = 0; i < nextPoints.size(); ++i) {
+        if (status[i] == 1) {
+            line(frame, prevKeypoints[i], nextPoints[i], Scalar(0, 255, 0), 2);
+            circle(frame, nextPoints[i], 3, Scalar(0, 0, 255), -1);
+        }
+    }
+
+    // Display the current frame with tracked features
+    imshow("Pyramid KLT Tracking", frame);
+
+    // Write the frame with keypoints and tracked points to the output video
+    outputVideo.write(frame);
+
+
+    // Update the previous frame and keypoints for the next iteration
+    prevGray = gray.clone();
+    keypoints = nextPoints;
+
+    // Exit if the 'Esc' key is pressed
+    char key = waitKey(30);
+    if (key == 27) {
+        break;
+    }
+}
+
+    // Release resources
+    video.release();
+    outputVideo.release();
+    destroyAllWindows();
+}
 int main(int, char**){
 
     Mat inputImageFAST_1 = imread("/FAST/signal-2023-12-14-212155_002.jpeg", IMREAD_GRAYSCALE);
@@ -218,9 +330,9 @@ int main(int, char**){
     imwrite("/results/OpenCVFAST2.jpeg", cvfast2);
     imwrite("/results/FAST2.jpeg", fast2);
 
-    string path = "/KLT/4.gif";
-    OpenCV_KLT(path);
-    
+    string path = "work/KLT/4.gif";
+    //OpenCV_KLT(path);
+    PyramidKLT(path);
 
     return 0;
 }
