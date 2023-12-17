@@ -11,6 +11,5 @@ I'm unsure about file opening functionality because my profile name is in Cyrill
 ![Sample Image](results/FAST2.jpeg)
 
 ## KLT
-<video width="320" height="240" controls>
-  <source src="results/KLT.mp4" type="video/mp4">
-</video>
+![Sample Image](results/KLT.gif)
+
