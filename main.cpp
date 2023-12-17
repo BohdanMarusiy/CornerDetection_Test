@@ -72,7 +72,7 @@ Mat OpenCV_Fast(Mat inputImage)
     return cornersImageCV;
 }
 
-void MyFast(Mat InputImage)
+Mat MyFast(Mat InputImage)
 {
     //My FAST
     Mat Image = InputImage;
@@ -80,7 +80,7 @@ void MyFast(Mat InputImage)
 
     if (detectedCorners.empty()) {
         cout << "No corners detected!" << endl;
-        return;
+        return InputImage;
     }
 
     Mat cornersImage;
@@ -92,15 +92,31 @@ void MyFast(Mat InputImage)
 
     imshow("Detected Corners (FAST)", cornersImage);
     waitKey(0);
+    return cornersImage;
 }
 
-void OpenCV_KLT(string path)
-{
-     VideoCapture video(path);
+void OpenCV_KLT(string path) {
+    VideoCapture video(path);
 
-    // Check if the GIF is opened successfully
+    // Check if the video is opened successfully
     if (!video.isOpened()) {
-        cerr << "Could not open the GIF." << endl;
+        cerr << "Could not open the video." << endl;
+        return;
+    }
+
+    // Video properties
+    int frameWidth = static_cast<int>(video.get(CAP_PROP_FRAME_WIDTH));
+    int frameHeight = static_cast<int>(video.get(CAP_PROP_FRAME_HEIGHT));
+    double fps = video.get(CAP_PROP_FPS);
+
+    // Define the codec and create VideoWriter object
+    VideoWriter outputVideo;
+    string outputFilename = "/results/KLT.mp4"; // Change this filename as needed
+    int codec = VideoWriter::fourcc('M', 'P', '4', 'V');
+    outputVideo.open(outputFilename, codec, fps, Size(frameWidth, frameHeight));
+
+    if (!outputVideo.isOpened()) {
+        cerr << "Could not create the output video file." << endl;
         return;
     }
 
@@ -151,6 +167,9 @@ void OpenCV_KLT(string path)
             }
         }
 
+        // Write the frame with keypoints and tracked points to the output video
+        outputVideo.write(frame);
+
         // Update the previous frame and keypoints for the next iteration
         prevGray = gray.clone();
         prevPoints = nextPoints;
@@ -165,7 +184,9 @@ void OpenCV_KLT(string path)
         }
     }
 
+    // Release resources
     video.release();
+    outputVideo.release();
     destroyAllWindows();
 }
 
@@ -185,11 +206,17 @@ int main(int, char**){
         return -1;
     }
 
-    OpenCV_Fast(inputImageFAST_1);
-    MyFast(inputImageFAST_1);
+    Mat cvfast1 = OpenCV_Fast(inputImageFAST_1);
+    Mat fast1 = MyFast(inputImageFAST_1);
 
-    OpenCV_Fast(inputImageFAST_2);
-    MyFast(inputImageFAST_2);
+    imwrite("/results/OpenCVFAST1.jpeg", cvfast1);
+    imwrite("/results/FAST1.jpeg", fast1);
+
+    Mat cvfast2 = OpenCV_Fast(inputImageFAST_2);
+    Mat fast2 = MyFast(inputImageFAST_2);
+
+    imwrite("/results/OpenCVFAST2.jpeg", cvfast2);
+    imwrite("/results/FAST2.jpeg", fast2);
 
     string path = "/KLT/4.gif";
     OpenCV_KLT(path);
